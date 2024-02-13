@@ -1,0 +1,7 @@
+dagster==1.6.3
+dagster-docker==0.22.3
+dagster-postgres==0.22.3
+dagit==1.6.3
+SQLAlchemy~=2.0.25
+pandas~=2.2.0
+pyod~=1.1.2
