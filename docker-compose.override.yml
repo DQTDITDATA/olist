@@ -1,0 +1,5 @@
+version: '3'
+services:
+    caddy:
+      volumes:
+        - ./Caddyfile_local_setup:/etc/caddy/Caddyfile

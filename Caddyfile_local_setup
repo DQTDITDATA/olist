@@ -1,0 +1,4 @@
+dagster.localhost {
+  reverse_proxy dagster_dagit:3000
+}
+

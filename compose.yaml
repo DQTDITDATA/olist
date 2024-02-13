@@ -1,0 +1,108 @@
+version: "3.7"
+
+services:
+
+  dagster_code:
+    container_name: dagster_code
+    build:
+      context: .
+      dockerfile: Dockerfile_dagstercode
+    image: dagster_code_image
+    environment:
+      DAGSTER_POSTGRES_USER: delaino
+      DAGSTER_POSTGRES_PASSWORD: testpass
+      DAGSTER_POSTGRES_HOST: dagster_postgres
+      DAGSTER_POSTGRES_DB: dagster_logs
+    volumes:
+      - ./ETL:/opt/dagster/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - dagster_network
+
+
+  dagster_daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile_dagster
+    entrypoint:
+      - dagster-daemon
+      - run
+    environment:
+      DAGSTER_POSTGRES_USER: delaino
+      DAGSTER_POSTGRES_PASSWORD: testpass
+      DAGSTER_POSTGRES_HOST: dagster_postgres
+      DAGSTER_POSTGRES_DB: dagster_logs
+    container_name: dagster_daemon
+    restart: on-failure
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/io_manager_storage:/tmp/io_manager_storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - dagster_postgres
+      - dagster_code
+    networks:
+      - dagster_network
+
+  dagster_dagit:
+    build:
+      context: .
+      dockerfile: Dockerfile_dagster
+    entrypoint:
+      - dagit
+      - -h
+      - "0.0.0.0"
+      - -p
+      - "3000"
+      - -w
+      - workspace.yaml
+    container_name: dagster_dagit
+    expose: [ "3000" ]
+    environment:
+      DAGSTER_POSTGRES_USER: delaino
+      DAGSTER_POSTGRES_PASSWORD: testpass
+      DAGSTER_POSTGRES_HOST: dagster_postgres
+      DAGSTER_POSTGRES_DB: dagster_logs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/io_manager_storage:/tmp/io_manager_storage
+      - ./ETL:/opt/dagster/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - dagster_postgres
+      - dagster_code
+    networks:
+      - dagster_network
+
+  dagster_postgres:
+    container_name: dagster_postgres
+    image: postgres:latest
+    expose: [ "5432" ]
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+    networks:
+      - dagster_network
+
+  caddy:
+    container_name: caddy
+    build:
+      context: .
+      dockerfile: Dockerfile_caddy
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile_local:/etc/caddy/Caddyfile
+    ports:
+      - "443:443"
+      - "80:80"
+    networks:
+      - dagster_network
+    depends_on:
+      - dagster_dagit
+
+
+networks:
+  dagster_network:
+    driver: bridge
